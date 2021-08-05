@@ -56,6 +56,7 @@ type Index struct {
 	Name        string
 	Columns     []string
 	Cardinality []uint64
+	Unique      bool
 }
 
 type Table struct {
@@ -190,15 +191,16 @@ func (ta *Table) AddIndex(name string) (index *Index) {
 }
 
 func NewIndex(name string) *Index {
-	return &Index{name, make([]string, 0, 8), make([]uint64, 0, 8)}
+	return &Index{Name: name, Columns: make([]string, 0, 8), Cardinality: make([]uint64, 0, 8)}
 }
 
-func (idx *Index) AddColumn(name string, cardinality uint64) {
+func (idx *Index) AddColumn(name string, cardinality uint64, uniq bool) {
 	idx.Columns = append(idx.Columns, name)
 	if cardinality == 0 {
 		cardinality = uint64(len(idx.Cardinality) + 1)
 	}
 	idx.Cardinality = append(idx.Cardinality, cardinality)
+	idx.Unique = uniq
 }
 
 func (idx *Index) FindColumn(name string) int {
@@ -315,8 +317,9 @@ func (ta *Table) fetchIndexes(conn mysql.Executer) error {
 			currentName = indexName
 		}
 		cardinality, _ := r.GetUint(i, 6)
+		uniq, _ := r.GetUint(i, 1)
 		colName, _ := r.GetString(i, 4)
-		currentIndex.AddColumn(colName, cardinality)
+		currentIndex.AddColumn(colName, cardinality, uniq == 0)
 	}
 
 	return ta.fetchPrimaryKeyColumns()
@@ -365,7 +368,7 @@ func (ta *Table) fetchIndexesViaSqlDB(conn *sql.DB) error {
 		}
 
 		c := toUint64(cardinality)
-		currentIndex.AddColumn(colName, c)
+		currentIndex.AddColumn(colName, c, false)
 	}
 
 	return ta.fetchPrimaryKeyColumns()

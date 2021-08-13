@@ -57,6 +57,9 @@ func Connect(addr string, user string, password string, dbName string, options .
 		return nil, errors.Trace(err)
 	}
 
+	tcpConn := conn.(*net.TCPConn)
+	tcpConn.SetKeepAlive(true)
+	tcpConn.SetKeepAlivePeriod(5 * time.Second)
 	if c.tlsConfig != nil {
 		c.Conn = packet.NewTLSConn(conn)
 	} else {
